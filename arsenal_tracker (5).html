@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rees' Awesome Title Race Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #DB0007;
+    --red-dark: #8B0000;
+    --red-glow: rgba(219,0,7,0.25);
+    --blue: #1C4FAF;
+    --gold: #EDBE00;
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --surface3: #222222;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.15);
+    --text: #f0f0f0;
+    --text-muted: #666;
+    --text-dim: #999;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --green-bg: rgba(34,197,94,0.12);
+    --amber-bg: rgba(245,158,11,0.12);
+    --red-bg: rgba(219,0,7,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Noise grain overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .header-left {}
+
+  .crest {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 20px var(--red-glow));
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(36px, 6vw, 64px);
+    letter-spacing: 0.03em;
+    line-height: 0.9;
+    color: var(--text);
+  }
+
+  h1 span {
+    color: var(--red);
+    display: block;
+  }
+
+  .season-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  /* ── Hero probability ── */
+  .hero-prob {
+    text-align: right;
+  }
+
+  .prob-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .prob-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 10vw, 96px);
+    line-height: 1;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 0 40px var(--red-glow);
+  }
+
+  .prob-number.high   { color: var(--green); text-shadow: 0 0 40px rgba(34,197,94,0.3); }
+  .prob-number.medium { color: var(--amber); text-shadow: 0 0 40px rgba(245,158,11,0.3); }
+  .prob-number.low    { color: var(--red);   text-shadow: 0 0 40px var(--red-glow); }
+
+  .prob-model-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Scoreboard strip ── */
+  .scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  .team-block {
+    padding: 24px 28px;
+  }
+
+  .team-block.arsenal { border-right: 1px solid var(--border); }
+  .team-block.city    { border-left: 1px solid var(--border); text-align: right; }
+
+  .team-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .team-name.arsenal { color: var(--red); }
+  .team-name.city    { color: var(--blue); }
+
+  .team-pts {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    line-height: 1;
+  }
+
+  .team-pts.arsenal { color: var(--text); }
+  .team-pts.city    { color: var(--text); }
+
+  .team-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .gap-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 20px;
+    background: var(--surface2);
+    min-width: 80px;
+  }
+
+  .gap-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .gap-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+
+  .gap-value.positive { color: var(--green); }
+  .gap-value.negative { color: var(--red); }
+  .gap-value.zero     { color: var(--text-muted); }
+
+  /* ── Section title ── */
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding-left: 2px;
+  }
+
+  /* ── Fixtures table ── */
+  .fixtures-wrap {
+    margin-bottom: 40px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  thead th.num { text-align: center; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody tr.month-header td {
+    padding: 20px 12px 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: none;
+    background: none;
+  }
+
+  tbody tr.month-header:hover { background: none; }
+
+  td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+
+  .td-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    min-width: 70px;
+  }
+
+  .td-fixture {
+    white-space: nowrap;
+  }
+
+  .fixture-opp {
+    font-weight: 500;
+    font-size: 13px;
+  }
+
+  .fixture-ha {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .td-pts { text-align: center; min-width: 90px; }
+  .td-total { text-align: center; min-width: 60px; }
+  .td-gap { text-align: center; min-width: 50px; }
+  .td-prob { text-align: right; min-width: 90px; }
+
+  /* ── Input ── */
+  .pts-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .pts-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border-bright);
+    background: var(--surface3);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 500;
+  }
+
+  .pts-btn:hover { background: var(--surface2); border-color: rgba(255,255,255,0.3); }
+
+  .pts-btn.active-3 { background: var(--green); border-color: var(--green); color: #000; }
+  .pts-btn.active-1 { background: var(--amber); border-color: var(--amber); color: #000; }
+  .pts-btn.active-0 { background: var(--red);   border-color: var(--red);   color: #fff; }
+
+  .pts-predicted {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    min-width: 50px;
+    border: 1px dashed var(--border-bright);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .pts-predicted:hover { border-color: rgba(255,255,255,0.3); background: var(--surface3); }
+
+  .pts-predicted.editing {
+    border-style: solid;
+    border-color: var(--gold);
+  }
+
+  .pred-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    width: 28px;
+    text-align: center;
+  }
+
+  .total-cell {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.02em;
+  }
+  .total-cell.arsenal { color: var(--red); }
+  .total-cell.city    { color: var(--blue); }
+
+  .gap-cell {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .gap-cell.pos { color: var(--green); }
+  .gap-cell.neg { color: var(--red); }
+  .gap-cell.zero { color: var(--text-muted); }
+
+  /* ── Probability pill ── */
+  .prob-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 80px;
+  }
+
+  .prob-bar-wrap {
+    width: 48px;
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .prob-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .prob-pill.high  .prob-bar { background: var(--green); }
+  .prob-pill.medium .prob-bar { background: var(--amber); }
+  .prob-pill.low   .prob-bar { background: var(--red); }
+  .prob-pill.high  span { color: var(--green); }
+  .prob-pill.medium span { color: var(--amber); }
+  .prob-pill.low   span { color: var(--red); }
+
+  /* ── Left divider for city side ── */
+  .city-divider {
+    border-left: 1px solid var(--border);
+    padding-left: 12px !important;
+  }
+
+  /* ── Chart area ── */
+  .chart-section { margin-bottom: 40px; }
+
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    height: 220px;
+  }
+
+  canvas { display: block; }
+
+  /* ── Footer note ── */
+  .model-note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+  }
+
+  .model-note strong { color: var(--text-dim); }
+
+  /* ── Divider ── */
+  hr.divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .wrapper > * {
+    animation: fadeUp 0.5s ease both;
+  }
+  .wrapper > *:nth-child(1) { animation-delay: 0.0s; }
+  .wrapper > *:nth-child(2) { animation-delay: 0.08s; }
+  .wrapper > *:nth-child(3) { animation-delay: 0.16s; }
+  .wrapper > *:nth-child(4) { animation-delay: 0.24s; }
+  .wrapper > *:nth-child(5) { animation-delay: 0.32s; }
+
+  @media (max-width: 700px) {
+    .scoreboard { grid-template-columns: 1fr auto 1fr; }
+    .team-block { padding: 16px; }
+    .team-pts { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <div class="crest">🔴</div>
+      <h1>Rees'<span>Awesome Title Race Calculator</span></h1>
+      <div class="season-tag">Premier League · 2025/26 · Exact Combinatorial Model</div>
+    </div>
+
+  </header>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard">
+    <div class="team-block arsenal">
+      <div class="team-name arsenal">Arsenal</div>
+      <div class="team-pts arsenal" id="sb-ars">—</div>
+      <div class="team-meta" id="sb-ars-meta">— games remaining</div>
+    </div>
+    <div class="gap-block">
+      <div class="gap-label">Gap</div>
+      <div class="gap-value" id="sb-gap">—</div>
+    </div>
+    <div class="team-block city">
+      <div class="team-name city">Man City</div>
+      <div class="team-pts city" id="sb-city">—</div>
+      <div class="team-meta" id="sb-city-meta">— games remaining</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-section">
+    <div class="section-title">Probability Through the Season</div>
+    <div class="chart-container">
+      <canvas id="prob-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Fixtures -->
+  <div class="fixtures-wrap">
+    <div class="section-title">Remaining Fixtures — Enter Actual Results</div>
+    <table id="fixtures-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Arsenal vs</th>
+          <th class="num" colspan="2">Arsenal pts<br><span style="font-size:8px;opacity:.6">actual · pred</span></th>
+          <th class="num">Total</th>
+          <th class="city-divider">City vs</th>
+          <th class="num" colspan="2">City pts<br><span style="font-size:8px;opacity:.6">actual · pred</span></th>
+          <th class="num">Total</th>
+          <th class="num">Gap</th>
+          <th style="text-align:right">P(Win)</th>
+        </tr>
+      </thead>
+      <tbody id="fixture-rows"></tbody>
+    </table>
+  </div>
+
+  <hr class="divider">
+
+  <div class="model-note">
+    <strong>Model:</strong> Exact combinatorial enumeration of all possible 0/1/3 pt outcomes across remaining games. 
+    Per-game probabilities: Arsenal W/D/L = 66.7% / 25.0% / 8.3% · City W/D/L = 75.5% / 24.5% / 0%. 
+    Derived from 2025/26 season PPG (Arsenal 2.25, City 2.56). Ties in final points broken 50/50.<br>
+    <strong>Usage:</strong> Click result buttons (W=3, D=1, L=0) after each game. Edit predicted pts by clicking the dashed cell.
+  </div>
+
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const ARS_START  = 67;
+const CITY_START = 60;
+
+const ARS_W  = 0.667, ARS_D  = 0.250, ARS_L  = 0.083;
+const CITY_W = 0.755, CITY_D = 0.245, CITY_L = 0.000;
+const PTS = [0, 1, 3];
+
+// (date, ars_opp, ars_ha, ars_pred, city_opp, city_ha, city_pred, ag_after, cg_after)
+const FIXTURES = [
+  { date:"14 Mar", a_opp:"Everton",        a_ha:"H", a_pred:3, c_opp:"West Ham",      c_ha:"H",   c_pred:3, ag:7, cg:8 },
+  { date:"11 Apr", a_opp:"Bournemouth",    a_ha:"H", a_pred:3, c_opp:"Chelsea",        c_ha:"A",   c_pred:1, ag:6, cg:7 },
+  { date:"19 Apr", a_opp:"Man City",       a_ha:"A", a_pred:1, c_opp:"Arsenal",        c_ha:"H",   c_pred:1, ag:5, cg:6 },
+  { date:"25 Apr", a_opp:"Newcastle",      a_ha:"H", a_pred:1, c_opp:"Burnley",        c_ha:"A",   c_pred:3, ag:4, cg:5 },
+  { date:"2 May",  a_opp:"Fulham",         a_ha:"H", a_pred:3, c_opp:"Everton",        c_ha:"A",   c_pred:3, ag:3, cg:4 },
+  { date:"9 May",  a_opp:"West Ham",       a_ha:"A", a_pred:1, c_opp:"Brentford",      c_ha:"H",   c_pred:3, ag:2, cg:3 },
+  { date:"17 May", a_opp:"Burnley",        a_ha:"H", a_pred:3, c_opp:"Bournemouth",    c_ha:"A",   c_pred:3, ag:1, cg:2 },
+  { date:"24 May", a_opp:"Crystal Palace", a_ha:"A", a_pred:3, c_opp:"Aston Villa",    c_ha:"H",   c_pred:3, ag:0, cg:1 },
+  { date:"TBC",    a_opp:"—",              a_ha:"—", a_pred:null, c_opp:"Crystal Palace", c_ha:"TBC", c_pred:3, ag:0, cg:0 },
+];
+
+// State: actual results entered by user (null = not played)
+const state = FIXTURES.map(f => ({ a_act: null, c_act: null, a_pred: f.a_pred, c_pred: f.c_pred }));
+
+// ── Exact combinatorial ───────────────────────────────────────────────────────
+function ptsDist(n, w, d, l) {
+  let dist = { 0: 1.0 };
+  for (let i = 0; i < n; i++) {
+    const nd = {};
+    for (const [pts, prob] of Object.entries(dist)) {
+      const p = parseFloat(pts);
+      for (let j = 0; j < PTS.length; j++) {
+        const wt = [l, d, w][j];
+        const key = p + PTS[j];
+        nd[key] = (nd[key] || 0) + prob * wt;
+      }
+    }
+    dist = nd;
+  }
+  return dist;
+}
+
+function exactProb(ars, city, ag, cg) {
+  if (ag === 0 && cg === 0) {
+    return ars > city ? 1.0 : ars === city ? 0.5 : 0.0;
+  }
+  const ad = ptsDist(ag, ARS_W, ARS_D, ARS_L);
+  const cd = ptsDist(cg, CITY_W, CITY_D, CITY_L);
+  let prob = 0;
+  for (const [aa, ap] of Object.entries(ad)) {
+    for (const [ca, cp] of Object.entries(cd)) {
+      const af = ars + parseFloat(aa);
+      const cf = city + parseFloat(ca);
+      if      (af > cf) prob += ap * cp;
+      else if (af === cf) prob += 0.5 * ap * cp;
+    }
+  }
+  return prob;
+}
+
+// ── Compute running state ─────────────────────────────────────────────────────
+function computeRows() {
+  const rows = [];
+  // Starting row
+  rows.push({
+    date: 'Start', a_opp: '—', a_ha: '—', c_opp: '—', c_ha: '—',
+    a_act: null, c_act: null, a_pred: null, c_pred: null,
+    ars: ARS_START, city: CITY_START, ag: 8, cg: 9,
+    prob: exactProb(ARS_START, CITY_START, 8, 9),
+    is_start: true
+  });
+
+  let ars = ARS_START, city = CITY_START;
+  FIXTURES.forEach((f, i) => {
+    const s = state[i];
+    const a_pts = s.a_act !== null ? s.a_act : (s.a_pred !== null ? s.a_pred : 0);
+    const c_pts = s.c_act !== null ? s.c_act : (s.c_pred !== null ? s.c_pred : 0);
+    if (f.a_pred !== null) ars  += a_pts;
+    if (f.c_pred !== null) city += c_pts;
+    const prob = exactProb(ars, city, f.ag, f.cg);
+    rows.push({
+      date: f.date, a_opp: f.a_opp, a_ha: f.a_ha,
+      c_opp: f.c_opp, c_ha: f.c_ha,
+      a_act: s.a_act, c_act: s.c_act,
+      a_pred: s.a_pred, c_pred: s.c_pred,
+      ars, city, ag: f.ag, cg: f.cg, prob,
+      idx: i, is_start: false,
+      a_playable: f.a_pred !== null,
+      c_playable: true
+    });
+  });
+  return rows;
+}
+
+// ── Formatting ───────────────────────────────────────────────────────────────
+function probClass(p) {
+  return p >= 0.875 ? 'high' : p >= 0.70 ? 'medium' : 'low';
+}
+
+function fmtProb(p) {
+  return (p * 100).toFixed(1) + '%';
+}
+
+function fmtGap(g) {
+  return g > 0 ? '+' + g : '' + g;
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const rows = computeRows();
+  const tbody = document.getElementById('fixture-rows');
+  tbody.innerHTML = '';
+
+  // Month grouping
+  let lastMonth = '';
+  const months = { 'Mar':'March', 'Apr':'April', 'May':'May', 'TBC':'Date TBC' };
+
+  rows.forEach((row, ri) => {
+    if (row.is_start) return; // skip start row in table
+
+    const dateMonth = row.date.split(' ')[1] || row.date;
+    const monthFull = months[dateMonth] || dateMonth;
+    if (monthFull !== lastMonth) {
+      lastMonth = monthFull;
+      const mtr = document.createElement('tr');
+      mtr.className = 'month-header';
+      mtr.innerHTML = `<td colspan="11">${monthFull}</td>`;
+      tbody.appendChild(mtr);
+    }
+
+    const idx = row.idx;
+    const tr = document.createElement('tr');
+
+    // Arsenal result buttons
+    const aActHTML = row.a_playable ? makePtsBtns('a', idx, row.a_act) : `<span style="color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px;">—</span>`;
+    const aPredHTML = row.a_playable ? makePredCell('a', idx, row.a_pred) : '';
+
+    // City result buttons
+    const cActHTML = makePtsBtns('c', idx, row.c_act);
+    const cPredHTML = makePredCell('c', idx, row.c_pred);
+
+    const gap = row.ars - row.city;
+    const gapClass = gap > 0 ? 'pos' : gap < 0 ? 'neg' : 'zero';
+    const pc = probClass(row.prob);
+
+    tr.innerHTML = `
+      <td class="td-date">${row.date}</td>
+      <td class="td-fixture">
+        <div class="fixture-opp">${row.a_opp}</div>
+        <div class="fixture-ha">${row.a_ha}</div>
+      </td>
+      <td class="td-pts">${aActHTML}</td>
+      <td class="td-pts">${aPredHTML}</td>
+      <td class="td-total"><span class="total-cell arsenal">${row.ars}</span></td>
+      <td class="td-fixture city-divider">
+        <div class="fixture-opp">${row.c_opp}</div>
+        <div class="fixture-ha">${row.c_ha}</div>
+      </td>
+      <td class="td-pts">${cActHTML}</td>
+      <td class="td-pts">${cPredHTML}</td>
+      <td class="td-total"><span class="total-cell city">${row.city}</span></td>
+      <td class="td-gap"><span class="gap-cell ${gapClass}">${fmtGap(gap)}</span></td>
+      <td class="td-prob">
+        <div class="prob-pill ${pc}">
+          <div class="prob-bar-wrap"><div class="prob-bar" style="width:${row.prob*100}%"></div></div>
+          <span>${fmtProb(row.prob)}</span>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Attach events
+  tbody.querySelectorAll('.pts-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const team = btn.dataset.team;
+      const idx  = parseInt(btn.dataset.idx);
+      const val  = parseInt(btn.dataset.val);
+      const key  = team === 'a' ? 'a_act' : 'c_act';
+      // Toggle off if already selected
+      const newVal = state[idx][key] === val ? null : val;
+      state[idx][key] = newVal;
+
+      // Head-to-head mirror: 19 Apr (index 2) is Arsenal vs City
+      // If one team's result is set, auto-set the other's inverse
+      if (idx === 2) {
+        const mirror = { 3: 0, 1: 1, 0: 3 };
+        const otherKey = team === 'a' ? 'c_act' : 'a_act';
+        state[idx][otherKey] = newVal === null ? null : mirror[newVal];
+      }
+
+      renderAll();
+    });
+  });
+
+  tbody.querySelectorAll('.pts-predicted').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const team = cell.dataset.team;
+      const idx  = parseInt(cell.dataset.idx);
+      const key  = team === 'a' ? 'a_pred' : 'c_pred';
+      const inp  = cell.querySelector('input');
+      if (inp) { inp.focus(); return; }
+
+      cell.classList.add('editing');
+      const cur = state[idx][key];
+      cell.innerHTML = `<input class="pred-input" type="number" min="0" max="3" value="${cur !== null ? cur : ''}" />`;
+      const input = cell.querySelector('input');
+      input.focus(); input.select();
+
+      const commit = () => {
+        const v = parseInt(input.value);
+        state[idx][key] = isNaN(v) ? null : Math.min(3, Math.max(0, v));
+        renderAll();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); });
+    });
+  });
+
+  updateScoreboard(rows);
+  updateChart(rows);
+}
+
+function makePtsBtns(team, idx, actual) {
+  return `
+    <div class="pts-input-wrap">
+      ${[3,1,0].map(v => {
+        const lbl = v === 3 ? 'W' : v === 1 ? 'D' : 'L';
+        const cls = actual === v ? `active-${v}` : '';
+        return `<button class="pts-btn ${cls}" data-team="${team}" data-idx="${idx}" data-val="${v}">${lbl}</button>`;
+      }).join('')}
+    </div>`;
+}
+
+function makePredCell(team, idx, pred) {
+  return `<div class="pts-predicted" data-team="${team}" data-idx="${idx}" title="Click to edit predicted pts">${pred !== null ? pred : '?'}</div>`;
+}
+
+// ── Scoreboard ────────────────────────────────────────────────────────────────
+function updateScoreboard(rows) {
+  // Find latest played row
+  const last = rows[rows.length - 1];
+  document.getElementById('sb-ars').textContent  = last.ars;
+  document.getElementById('sb-city').textContent = last.city;
+
+  const gap = last.ars - last.city;
+  const gEl = document.getElementById('sb-gap');
+  gEl.textContent = fmtGap(gap);
+  gEl.className = 'gap-value ' + (gap > 0 ? 'positive' : gap < 0 ? 'negative' : 'zero');
+
+  document.getElementById('sb-ars-meta').textContent  = `${last.ag} game${last.ag!==1?'s':''} remaining`;
+  document.getElementById('sb-city-meta').textContent = `${last.cg} game${last.cg!==1?'s':''} remaining`;
+}
+
+// ── Hero prob ─────────────────────────────────────────────────────────────────
+function updateHero(rows) {
+  // Show the latest (most recent) row's probability
+  const latest = rows[rows.length - 1];
+  const p = latest.prob;
+  const el = document.getElementById('hero-prob');
+  el.textContent = fmtProb(p);
+  el.className = 'prob-number ' + probClass(p);
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+let chartInstance = null;
+
+function updateChart(rows) {
+  const canvas = document.getElementById('prob-chart');
+  const ctx = canvas.getContext('2d');
+  const labels = rows.map(r => r.date);
+  const data   = rows.map(r => +(r.prob * 100).toFixed(2));
+
+  if (chartInstance) {
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].data = data;
+    chartInstance.update('active');
+    return;
+  }
+
+  canvas.width  = canvas.parentElement.clientWidth - 48;
+  canvas.height = 180;
+
+  // Simple custom canvas chart — no library needed
+  chartInstance = { data: { labels, datasets: [{ data }] }, update: drawChart };
+  drawChart();
+
+  function drawChart() {
+    const W = canvas.width, H = canvas.height;
+    const pad = { top: 10, right: 10, bottom: 30, left: 40 };
+    const iW = W - pad.left - pad.right;
+    const iH = H - pad.top - pad.bottom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const pts = chartInstance.data.datasets[0].data;
+    const lbls = chartInstance.data.labels;
+    const n = pts.length;
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    [0, 25, 50, 75, 100].forEach(v => {
+      const y = pad.top + iH - (v / 100) * iH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.font = '9px DM Mono, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(v + '%', pad.left - 6, y + 3);
+    });
+
+    // X labels
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '9px DM Mono, monospace';
+    ctx.textAlign = 'center';
+    lbls.forEach((l, i) => {
+      const x = pad.left + (i / (n - 1)) * iW;
+      ctx.fillText(l, x, H - 6);
+    });
+
+    // Area fill
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + iH);
+    grad.addColorStop(0, 'rgba(219,0,7,0.25)');
+    grad.addColorStop(1, 'rgba(219,0,7,0.01)');
+    ctx.beginPath();
+    pts.forEach((v, i) => {
+      const x = pad.left + (i / (n - 1)) * iW;
+      const y = pad.top + iH - (v / 100) * iH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.lineTo(pad.left + iW, pad.top + iH);
+    ctx.lineTo(pad.left, pad.top + iH);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#DB0007';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    pts.forEach((v, i) => {
+      const x = pad.left + (i / (n - 1)) * iW;
+      const y = pad.top + iH - (v / 100) * iH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Dots
+    pts.forEach((v, i) => {
+      const x = pad.left + (i / (n - 1)) * iW;
+      const y = pad.top + iH - (v / 100) * iH;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = v >= 87.5 ? '#22c55e' : v >= 70 ? '#f59e0b' : '#DB0007';
+      ctx.fill();
+      ctx.strokeStyle = '#0a0a0a';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
+}
+
+function renderAll() {
+  renderTable();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderAll();
+window.addEventListener('resize', () => {
+  if (chartInstance) {
+    const canvas = document.getElementById('prob-chart');
+    canvas.width = canvas.parentElement.clientWidth - 48;
+    chartInstance.update();
+  }
+});
+</script>
+</body>
+</html>
